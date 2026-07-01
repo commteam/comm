@@ -200,4 +200,125 @@ CREATE INDEX IF NOT EXISTS idx_managed_rules_folder ON managed_rules(folder_id);
 CREATE INDEX IF NOT EXISTS idx_managed_rules_workspace ON managed_rules(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_habit_patterns_workspace ON habit_patterns(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_stats_workspace ON desktop_stats_snapshots(workspace_id);
+
+-- Organization sessions (extended)
+CREATE TABLE IF NOT EXISTS org_sessions_v2 (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  mode TEXT NOT NULL DEFAULT 'manual',
+  total_files INTEGER NOT NULL DEFAULT 0,
+  approved_count INTEGER NOT NULL DEFAULT 0,
+  skipped_count INTEGER NOT NULL DEFAULT 0,
+  failed_count INTEGER NOT NULL DEFAULT 0,
+  executed_count INTEGER NOT NULL DEFAULT 0,
+  started_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  undo_snapshot_id TEXT,
+  report_id TEXT,
+  recovery_data TEXT NOT NULL DEFAULT '{}'
+);
+
+-- Undo snapshots (full session undo)
+CREATE TABLE IF NOT EXISTS undo_snapshots (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  file_moves TEXT NOT NULL DEFAULT '[]',
+  learning_event_ids TEXT NOT NULL DEFAULT '[]',
+  rule_states TEXT NOT NULL DEFAULT '[]',
+  folder_profile_states TEXT NOT NULL DEFAULT '[]',
+  deleted INTEGER NOT NULL DEFAULT 0,
+  label TEXT NOT NULL DEFAULT ''
+);
+
+-- File move operations
+CREATE TABLE IF NOT EXISTS file_moves (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  file_id TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  from_path TEXT NOT NULL,
+  to_path TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  error TEXT,
+  executed_at INTEGER,
+  workspace_id TEXT NOT NULL
+);
+
+-- Session reports
+CREATE TABLE IF NOT EXISTS session_reports (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
+  files_organized INTEGER NOT NULL DEFAULT 0,
+  files_skipped INTEGER NOT NULL DEFAULT 0,
+  files_failed INTEGER NOT NULL DEFAULT 0,
+  rules_learned INTEGER NOT NULL DEFAULT 0,
+  health_before INTEGER NOT NULL DEFAULT 0,
+  health_after INTEGER NOT NULL DEFAULT 0,
+  time_saved_minutes INTEGER NOT NULL DEFAULT 0,
+  duration_ms INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  exported INTEGER NOT NULL DEFAULT 0
+);
+
+-- Archive candidates
+CREATE TABLE IF NOT EXISTS archive_candidates (
+  id TEXT PRIMARY KEY,
+  file_id TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  absolute_path TEXT NOT NULL,
+  file_size INTEGER NOT NULL DEFAULT 0,
+  last_modified INTEGER NOT NULL,
+  reason TEXT NOT NULL DEFAULT '',
+  suggested_archive_path TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending',
+  workspace_id TEXT NOT NULL,
+  detected_at INTEGER NOT NULL
+);
+
+-- Scheduled tasks
+CREATE TABLE IF NOT EXISTS scheduled_tasks (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  schedule_type TEXT NOT NULL DEFAULT 'manual',
+  cron_expression TEXT NOT NULL DEFAULT '',
+  last_run_at INTEGER,
+  next_run_at INTEGER,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  task_type TEXT NOT NULL DEFAULT 'scan',
+  created_at INTEGER NOT NULL
+);
+
+-- Recovery state
+CREATE TABLE IF NOT EXISTS recovery_state (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  pending_moves TEXT NOT NULL DEFAULT '[]',
+  undo_snapshot_id TEXT,
+  saved_at INTEGER NOT NULL,
+  recovered INTEGER NOT NULL DEFAULT 0
+);
+
+-- Productivity insights
+CREATE TABLE IF NOT EXISTS productivity_insights (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  insight_type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  value REAL NOT NULL DEFAULT 0,
+  trend TEXT NOT NULL DEFAULT 'stable',
+  generated_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_org_sessions_v2_workspace ON org_sessions_v2(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_undo_snapshots_session ON undo_snapshots(session_id);
+CREATE INDEX IF NOT EXISTS idx_file_moves_session ON file_moves(session_id);
+CREATE INDEX IF NOT EXISTS idx_session_reports_session ON session_reports(session_id);
+CREATE INDEX IF NOT EXISTS idx_archive_candidates_workspace ON archive_candidates(workspace_id, status);
+CREATE INDEX IF NOT EXISTS idx_recovery_state_workspace ON recovery_state(workspace_id, recovered);
 `

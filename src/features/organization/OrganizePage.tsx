@@ -1,230 +1,362 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, ChevronRight, Info } from 'lucide-react'
+import {
+  Sparkles, ChevronRight, ChevronLeft, Play, AlertCircle,
+  ScanLine, CheckCircle2, Loader2, Eye
+} from 'lucide-react'
 import { PageWrapper, PageHeader } from '../../app/components/layout/PageWrapper'
 import { Button } from '../../app/components/ui/Button'
 import { Badge } from '../../app/components/ui/Badge'
-import { CategoryStep } from './components/CategoryStep'
-import { LowConfidenceStep } from './components/LowConfidenceStep'
-import { SimulationStep } from './components/SimulationStep'
-import { mockRecommendations } from '../../shared/mock'
+import { Card } from '../../app/components/ui/Card'
+import { ProgressBar } from '../../app/components/ui/ProgressBar'
+import { RecommendationGroupCard } from './components/RecommendationGroupCard'
+import { OrganizationPreviewPanel } from './components/OrganizationPreviewPanel'
+import { SessionReportPanel } from './components/SessionReportPanel'
+import type {
+  OrgSessionV2,
+  RecommendationGroup,
+  OrganizationPreview,
+  SessionReport,
+} from '../../shared/types/intelligence'
 
-type WizardStep = 'overview' | 'pdf' | 'document' | 'image' | 'spreadsheet' | 'executable' | 'archive' | 'low-confidence' | 'simulation' | 'complete'
+type WizardStep = 'start' | 'scanning' | 'groups' | 'preview' | 'executing' | 'report'
 
-const CATEGORY_STEPS: { key: WizardStep; label: string; category: string }[] = [
-  { key: 'pdf', label: 'PDFs', category: 'pdf' },
-  { key: 'document', label: 'Documents', category: 'document' },
-  { key: 'image', label: 'Images', category: 'image' },
-  { key: 'spreadsheet', label: 'Spreadsheets', category: 'spreadsheet' },
-  { key: 'executable', label: 'Applications', category: 'executable' },
-  { key: 'archive', label: 'Archives', category: 'archive' },
-]
+const STEP_LABELS = ['Scan', 'Analyze', 'Review', 'Preview', 'Execute', 'Report']
+const STEP_INDEX: Record<WizardStep, number> = {
+  start: 0, scanning: 1, groups: 2, preview: 3, executing: 4, report: 5
+}
 
-const STEP_ORDER: WizardStep[] = ['overview', ...CATEGORY_STEPS.map(c => c.key), 'low-confidence', 'simulation', 'complete']
+const api = () => (window as any).electronAPI
+
+async function ipc<T>(fn: () => Promise<{ success: boolean; data?: T; error?: string }>): Promise<T> {
+  const res = await fn()
+  if (!res.success) throw new Error(res.error)
+  return res.data as T
+}
 
 export function OrganizePage() {
-  const [step, setStep] = useState<WizardStep>('overview')
-  const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set())
-  const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set())
+  const [step, setStep] = useState<WizardStep>('start')
+  const [session, setSession] = useState<OrgSessionV2 | null>(null)
+  const [groups, setGroups] = useState<RecommendationGroup[]>([])
+  const [preview, setPreview] = useState<OrganizationPreview | null>(null)
+  const [report, setReport] = useState<SessionReport | null>(null)
+  const [snapshotId, setSnapshotId] = useState<string | undefined>()
+  const [error, setError] = useState<string | null>(null)
+  const [execProgress, setExecProgress] = useState({ done: 0, total: 0, filename: '' })
+  const [scanProgress, setScanProgress] = useState({ progress: 0, message: '' })
 
-  const highConfidence = mockRecommendations.filter(r => !r.isLowConfidence)
-  const lowConfidence = mockRecommendations.filter(r => r.isLowConfidence)
+  const groupsApprovedTotal = groups
+    .filter(g => g.approved !== false)
+    .reduce((s, g) => s + g.items.filter(i => i.approved !== false).length, 0)
 
-  const currentIndex = STEP_ORDER.indexOf(step)
-
-  function next() {
-    const nextStep = STEP_ORDER[currentIndex + 1]
-    if (nextStep) setStep(nextStep)
+  async function handleStart() {
+    setError(null)
+    setStep('scanning')
+    setScanProgress({ progress: 0, message: 'Starting scan...' })
+    try {
+      const settings = await ipc<any>(() => api().getSettings())
+      const desktopPath = settings?.general?.desktopPath ?? ''
+      const unsub = api().onScanProgressIntelligence?.((data: { progress: number; message: string }) => {
+        setScanProgress(data)
+      })
+      const sess = await ipc<OrgSessionV2>(() => api().startOrgSession({}))
+      setSession(sess)
+      await ipc(() => api().intelligenceScan({ desktopPath, mode: 'incremental' }))
+      unsub?.()
+      setScanProgress({ progress: 100, message: 'Generating recommendations...' })
+      const grps = await ipc<RecommendationGroup[]>(() =>
+        api().generateOrgGroups({ sessionId: sess.id })
+      )
+      setGroups(grps.map(g => ({ ...g, expanded: false, approved: null })))
+      setStep('groups')
+    } catch (e) {
+      setError(String(e))
+      setStep('start')
+    }
   }
-  function back() {
-    const prevStep = STEP_ORDER[currentIndex - 1]
-    if (prevStep) setStep(prevStep)
+
+  function approveGroup(groupId: string) {
+    setGroups(prev => prev.map(g =>
+      g.id === groupId ? { ...g, approved: true, items: g.items.map(i => ({ ...i, approved: true })) } : g
+    ))
   }
+  function rejectGroup(groupId: string) {
+    setGroups(prev => prev.map(g =>
+      g.id === groupId ? { ...g, approved: false, items: g.items.map(i => ({ ...i, approved: false })) } : g
+    ))
+  }
+  function approveFile(groupId: string, fileId: string) {
+    setGroups(prev => prev.map(g => {
+      if (g.id !== groupId) return g
+      const items = g.items.map(i => i.fileId === fileId ? { ...i, approved: true } : i)
+      const allApproved = items.every(i => i.approved === true)
+      const allRejected = items.every(i => i.approved === false)
+      return { ...g, items, approved: allApproved ? true : allRejected ? false : null }
+    }))
+  }
+  function rejectFile(groupId: string, fileId: string) {
+    setGroups(prev => prev.map(g => {
+      if (g.id !== groupId) return g
+      const items = g.items.map(i => i.fileId === fileId ? { ...i, approved: false } : i)
+      const allApproved = items.every(i => i.approved === true)
+      const allRejected = items.every(i => i.approved === false)
+      return { ...g, items, approved: allApproved ? true : allRejected ? false : null }
+    }))
+  }
+  function toggleExpand(groupId: string) {
+    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, expanded: !g.expanded } : g))
+  }
+
+  async function handleGeneratePreview() {
+    if (!session) return
+    setError(null)
+    try {
+      const prev = await ipc<OrganizationPreview>(() =>
+        api().generateOrgPreview({ sessionId: session.id, groups })
+      )
+      setPreview(prev)
+      setStep('preview')
+    } catch (e) { setError(String(e)) }
+  }
+
+  async function handleExecute() {
+    if (!session) return
+    setError(null)
+    setExecProgress({ done: 0, total: groupsApprovedTotal, filename: '' })
+    setStep('executing')
+    const unsub = api().onOrgExecuteProgress?.((data: { done: number; total: number; filename: string }) => {
+      setExecProgress(data)
+    })
+    try {
+      const approvedGroups = groups.filter(g => g.approved !== false)
+      const result = await ipc<{ executed: number; failed: number; snapshotId: string; reportId: string }>(
+        () => api().executeOrg({ sessionId: session.id, approvedGroups })
+      )
+      unsub?.()
+      setSnapshotId(result.snapshotId)
+      const rpt = await ipc<SessionReport>(() => api().getOrgReport({ sessionId: session.id }))
+      setReport(rpt)
+      setStep('report')
+    } catch (e) {
+      unsub?.()
+      setError(String(e))
+      setStep('preview')
+    }
+  }
+
+  async function handleUndo() {
+    if (!snapshotId) return
+    try {
+      await ipc(() => api().undoOrgSnapshot({ snapshotId }))
+      handleReset()
+    } catch (e) { setError(String(e)) }
+  }
+
+  function handleReset() {
+    setStep('start')
+    setGroups([])
+    setPreview(null)
+    setReport(null)
+    setSession(null)
+    setError(null)
+  }
+
+  const currentStepIndex = STEP_INDEX[step]
 
   return (
     <PageWrapper maxWidth="lg">
       <PageHeader
         title="Organization Wizard"
-        description="Review AI recommendations by category before anything moves"
+        description="Review AI recommendations — nothing moves without your approval"
         icon={<Sparkles size={18} />}
         actions={
-          <div className="flex items-center gap-2">
-            <Badge variant="info">{approvedIds.size} approved</Badge>
-            <Badge variant="muted">{skippedIds.size} skipped</Badge>
-          </div>
+          step !== 'start' && step !== 'report' ? (
+            <div className="flex items-center gap-2">
+              <Badge variant="info">{groupsApprovedTotal} approved</Badge>
+              <Badge variant="muted">{groups.flatMap(g => g.items.filter(i => i.approved === false)).length} skipped</Badge>
+            </div>
+          ) : undefined
         }
       />
 
-      {/* Step progress */}
-      {step !== 'overview' && step !== 'complete' && (
-        <StepProgress current={currentIndex - 1} steps={[...CATEGORY_STEPS.map(c => c.label), 'Review', 'Preview']} />
+      {step !== 'start' && (
+        <div className="mb-6">
+          <div className="flex gap-1 mb-2">
+            {STEP_LABELS.map((_, i) => (
+              <div key={i} className={`flex-1 h-1 rounded-full transition-colors ${
+                i < currentStepIndex ? 'bg-fluent-accent' :
+                i === currentStepIndex ? 'bg-fluent-accent/50' :
+                'bg-fluent-neutral-30 dark:bg-fluent-neutral-100'
+              }`} />
+            ))}
+          </div>
+          <div className="flex justify-between text-xs text-fluent-neutral-80">
+            {STEP_LABELS.map((label, i) => (
+              <span key={label} className={i <= currentStepIndex ? 'text-fluent-accent font-medium' : ''}>{label}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 p-3 rounded-fluent bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 flex items-center gap-2 text-sm text-red-700 dark:text-red-300">
+          <AlertCircle size={14} /> {error}
+        </div>
       )}
 
       <AnimatePresence mode="wait">
-        {step === 'overview' && (
-          <OverviewStep
-            key="overview"
-            recommendations={highConfidence}
-            lowConfidenceCount={lowConfidence.length}
-            onStart={next}
-          />
+        {step === 'start' && (
+          <motion.div key="start" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
+            <Card padding="lg" className="text-center space-y-6">
+              <div className="w-16 h-16 rounded-2xl bg-fluent-accent/10 flex items-center justify-center mx-auto">
+                <Sparkles size={32} className="text-fluent-accent" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-fluent-neutral-140 dark:text-fluent-neutral-10 mb-2">
+                  Ready to Organize
+                </h2>
+                <p className="text-fluent-neutral-80 text-sm max-w-md mx-auto">
+                  DeskPilot AI will scan your desktop, group files by destination, and show you a preview before anything moves.
+                </p>
+              </div>
+              <div className="grid grid-cols-4 gap-3 text-left">
+                {[
+                  { icon: ScanLine, label: 'Scan Desktop', desc: 'Incremental — fast' },
+                  { icon: Eye, label: 'Review Groups', desc: 'Approve or skip' },
+                  { icon: Eye, label: 'Preview', desc: 'See before/after' },
+                  { icon: CheckCircle2, label: 'Execute', desc: 'One file at a time' },
+                ].map(item => (
+                  <div key={item.label} className="rounded-fluent p-3 bg-fluent-neutral-10 dark:bg-fluent-neutral-120 border border-fluent-neutral-30 dark:border-fluent-neutral-110">
+                    <item.icon size={16} className="text-fluent-accent mb-1.5" />
+                    <p className="text-xs font-semibold text-fluent-neutral-120 dark:text-fluent-neutral-50">{item.label}</p>
+                    <p className="text-xs text-fluent-neutral-80">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+              <Button variant="primary" size="lg" onClick={handleStart}>
+                <Play size={16} /> Start Organization
+              </Button>
+            </Card>
+          </motion.div>
         )}
 
-        {CATEGORY_STEPS.map(cs => cs.key === step && (
-          <CategoryStep
-            key={cs.key}
-            category={cs.category}
-            label={cs.label}
-            recommendations={highConfidence.filter(r => r.category === cs.category)}
-            approvedIds={approvedIds}
-            skippedIds={skippedIds}
-            onApprove={(id) => setApprovedIds(prev => new Set([...prev, id]))}
-            onSkip={(id) => setSkippedIds(prev => new Set([...prev, id]))}
-            onApproveAll={(ids) => setApprovedIds(prev => new Set([...prev, ...ids]))}
-            onSkipAll={(ids) => setSkippedIds(prev => new Set([...prev, ...ids]))}
-            onNext={next}
-            onBack={back}
-          />
-        ))}
-
-        {step === 'low-confidence' && (
-          <LowConfidenceStep
-            key="low-confidence"
-            recommendations={lowConfidence}
-            approvedIds={approvedIds}
-            onApprove={(id, folderId) => {
-              void folderId
-              setApprovedIds(prev => new Set([...prev, id]))
-            }}
-            onSkip={(id) => setSkippedIds(prev => new Set([...prev, id]))}
-            onNext={next}
-            onBack={back}
-          />
+        {step === 'scanning' && (
+          <motion.div key="scanning" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
+            <Card padding="lg" className="text-center space-y-6">
+              <div className="w-14 h-14 rounded-full bg-fluent-accent/10 flex items-center justify-center mx-auto">
+                <Loader2 size={28} className="text-fluent-accent animate-spin" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-fluent-neutral-140 dark:text-fluent-neutral-10 mb-1">Scanning Desktop</h2>
+                <p className="text-sm text-fluent-neutral-80">{scanProgress.message || 'Analyzing files...'}</p>
+              </div>
+              <ProgressBar value={scanProgress.progress} max={100} variant="accent" size="md" />
+              <p className="text-xs text-fluent-neutral-80">{scanProgress.progress}% complete</p>
+            </Card>
+          </motion.div>
         )}
 
-        {step === 'simulation' && (
-          <SimulationStep
-            key="simulation"
-            recommendations={mockRecommendations}
-            approvedIds={approvedIds}
-            onExecute={next}
-            onBack={back}
-          />
+        {step === 'groups' && (
+          <motion.div key="groups" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-fluent-neutral-140 dark:text-fluent-neutral-10">
+                  {groups.length} Recommendation Group{groups.length !== 1 ? 's' : ''}
+                </h2>
+                <p className="text-xs text-fluent-neutral-80 mt-0.5">Review each group. Approve files you want to organize.</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setGroups(prev => prev.map(g => ({ ...g, approved: false, items: g.items.map(i => ({ ...i, approved: false })) })))}>
+                  Skip All
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setGroups(prev => prev.map(g => ({ ...g, approved: true, items: g.items.map(i => ({ ...i, approved: true })) })))}>
+                  Approve All
+                </Button>
+              </div>
+            </div>
+
+            {groups.length === 0 ? (
+              <Card padding="lg" className="text-center">
+                <CheckCircle2 size={32} className="text-green-500 mx-auto mb-3" />
+                <h3 className="font-semibold text-fluent-neutral-140 dark:text-fluent-neutral-10 mb-1">Your desktop is organized!</h3>
+                <p className="text-sm text-fluent-neutral-80">No files need organization right now.</p>
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {groups.map(group => (
+                  <RecommendationGroupCard
+                    key={group.id}
+                    group={group}
+                    onApproveGroup={() => approveGroup(group.id)}
+                    onRejectGroup={() => rejectGroup(group.id)}
+                    onApproveFile={fileId => approveFile(group.id, fileId)}
+                    onRejectFile={fileId => rejectFile(group.id, fileId)}
+                    onToggleExpand={() => toggleExpand(group.id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-between pt-2">
+              <Button variant="ghost" onClick={handleReset}><ChevronLeft size={14} /> Cancel</Button>
+              <Button variant="primary" onClick={handleGeneratePreview} disabled={groupsApprovedTotal === 0}>
+                Preview {groupsApprovedTotal} File{groupsApprovedTotal !== 1 ? 's' : ''} <ChevronRight size={14} />
+              </Button>
+            </div>
+          </motion.div>
         )}
 
-        {step === 'complete' && (
-          <CompleteStep
-            key="complete"
-            approvedCount={approvedIds.size}
-            skippedCount={skippedIds.size}
-            onDone={() => setStep('overview')}
-          />
+        {step === 'preview' && preview && (
+          <motion.div key="preview" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-4">
+            <div>
+              <h2 className="text-base font-semibold text-fluent-neutral-140 dark:text-fluent-neutral-10">Organization Preview</h2>
+              <p className="text-xs text-fluent-neutral-80 mt-0.5">Review the plan below. Nothing moves until you confirm.</p>
+            </div>
+            <OrganizationPreviewPanel preview={preview} />
+            <div className="flex justify-between pt-2">
+              <Button variant="ghost" onClick={() => setStep('groups')}><ChevronLeft size={14} /> Back</Button>
+              <Button variant="primary" onClick={handleExecute}>
+                <Play size={14} /> Confirm & Organize {preview.totalFiles} File{preview.totalFiles !== 1 ? 's' : ''}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
+        {step === 'executing' && (
+          <motion.div key="executing" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
+            <Card padding="lg" className="space-y-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-fluent-accent/10 flex items-center justify-center flex-shrink-0">
+                  <Loader2 size={22} className="text-fluent-accent animate-spin" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-fluent-neutral-140 dark:text-fluent-neutral-10">Organizing Files</h2>
+                  <p className="text-xs text-fluent-neutral-80">Moving one file at a time, verifying each step</p>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-xs text-fluent-neutral-80 mb-2">
+                  <span className="truncate max-w-[70%]">{execProgress.filename || 'Processing...'}</span>
+                  <span>{execProgress.done} / {execProgress.total}</span>
+                </div>
+                <ProgressBar value={execProgress.done} max={execProgress.total || 1} variant="accent" size="md" />
+              </div>
+              <p className="text-xs text-fluent-neutral-80 text-center">Please do not close the application during organization.</p>
+            </Card>
+          </motion.div>
+        )}
+
+        {step === 'report' && report && (
+          <motion.div key="report" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
+            <SessionReportPanel
+              report={report}
+              snapshotId={snapshotId}
+              onUndo={snapshotId ? handleUndo : undefined}
+              onDone={handleReset}
+            />
+          </motion.div>
         )}
       </AnimatePresence>
     </PageWrapper>
-  )
-}
-
-function StepProgress({ current, steps }: { current: number; steps: string[] }) {
-  return (
-    <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-1">
-      {steps.map((label, i) => (
-        <div key={label} className="flex items-center gap-1 shrink-0">
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-            i < current
-              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-              : i === current
-              ? 'bg-fluent-accent text-white shadow-fluent-4'
-              : 'bg-fluent-neutral-20 dark:bg-fluent-neutral-120 text-fluent-neutral-80 dark:text-fluent-neutral-80'
-          }`}>
-            {i < current ? '✓' : i + 1}
-            <span>{label}</span>
-          </div>
-          {i < steps.length - 1 && (
-            <ChevronRight size={12} className="text-fluent-neutral-50 dark:text-fluent-neutral-100" />
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function OverviewStep({ recommendations, lowConfidenceCount, onStart }: {
-  recommendations: typeof mockRecommendations
-  lowConfidenceCount: number
-  onStart: () => void
-}) {
-  return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
-      {/* AI summary card */}
-      <div className="rounded-fluent-lg bg-gradient-to-br from-fluent-accent to-blue-600 p-5 text-white mb-5 shadow-fluent-8">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles size={16} />
-          <span className="font-semibold">AI Analysis Complete</span>
-        </div>
-        <p className="text-white/90 text-sm leading-relaxed mb-4">
-          DeskPilot AI has analyzed your desktop and found {recommendations.length + lowConfidenceCount} files that can be organized. Nothing has been moved yet.
-        </p>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: 'Auto-applicable', value: recommendations.filter(r => r.isAutoApplicable).length, color: 'bg-white/20' },
-            { label: 'Needs review', value: recommendations.filter(r => !r.isAutoApplicable).length, color: 'bg-white/15' },
-            { label: 'Low confidence', value: lowConfidenceCount, color: 'bg-amber-500/30' },
-          ].map(s => (
-            <div key={s.label} className={`${s.color} rounded-fluent px-3 py-2`}>
-              <div className="text-xl font-bold">{s.value}</div>
-              <div className="text-white/70 text-xs">{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Info banner */}
-      <div className="flex items-start gap-2.5 p-3 rounded-fluent bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 mb-5 text-sm text-blue-700 dark:text-blue-300">
-        <Info size={15} className="shrink-0 mt-0.5" />
-        <p>You will review files <strong>by category</strong>, one group at a time. Nothing moves until you confirm at the simulation step.</p>
-      </div>
-
-      <Button variant="primary" size="lg" onClick={onStart} iconRight={<ChevronRight size={16} />}>
-        Start Review
-      </Button>
-    </motion.div>
-  )
-}
-
-function CompleteStep({ approvedCount, skippedCount, onDone }: {
-  approvedCount: number
-  skippedCount: number
-  onDone: () => void
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="text-center py-12"
-    >
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: 'spring', stiffness: 200, delay: 0.1 }}
-        className="w-20 h-20 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-6 shadow-fluent-16"
-      >
-        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M6 18l8 8L30 10" />
-        </svg>
-      </motion.div>
-      <h2 className="text-2xl font-bold text-fluent-neutral-140 dark:text-fluent-neutral-10 mb-2">
-        Organization Complete
-      </h2>
-      <p className="text-fluent-neutral-80 dark:text-fluent-neutral-80 mb-2">
-        {approvedCount} file{approvedCount !== 1 ? 's' : ''} moved · {skippedCount} skipped
-      </p>
-      <p className="text-sm text-fluent-neutral-70 dark:text-fluent-neutral-90 mb-8">
-        DeskPilot AI has learned from your decisions and updated its rules.
-      </p>
-      <Button variant="primary" onClick={onDone}>
-        Back to Overview
-      </Button>
-    </motion.div>
   )
 }

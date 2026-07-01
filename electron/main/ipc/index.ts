@@ -6,6 +6,7 @@ import { registerTimelineHandlers } from './timeline.handlers'
 import { registerUndoHandlers } from './undo.handlers'
 import { registerAppHandlers } from './app.handlers'
 import { registerIntelligenceHandlers } from './intelligence.handlers'
+import { registerOrganizationEngineHandlers } from './organization-engine.handlers'
 import log from 'electron-log'
 
 export function registerAllIPCHandlers(): void {
@@ -18,5 +19,6 @@ export function registerAllIPCHandlers(): void {
   registerTimelineHandlers()
   registerUndoHandlers()
   registerIntelligenceHandlers()
+  registerOrganizationEngineHandlers()
   log.info('All IPC handlers registered')
 }

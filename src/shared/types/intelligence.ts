@@ -363,3 +363,189 @@ export interface ManualMoveDetection {
   userResponse?: ManualMoveResponse
   workspaceId: string
 }
+
+// ─── Organization Engine ──────────────────────────────────────────────────────
+
+export type OrgSessionStatus = 'pending' | 'analyzing' | 'reviewing' | 'previewing' | 'executing' | 'complete' | 'cancelled' | 'failed' | 'recovering'
+
+export interface OrgSessionV2 {
+  id: string
+  workspaceId: string
+  status: OrgSessionStatus
+  mode: 'manual' | 'scheduled' | 'background'
+  totalFiles: number
+  approvedCount: number
+  skippedCount: number
+  failedCount: number
+  executedCount: number
+  startedAt: Date
+  completedAt?: Date
+  undoSnapshotId?: string
+  reportId?: string
+  recoveryData: Record<string, unknown>
+}
+
+export interface RecommendationGroup {
+  id: string
+  label: string
+  fileCount: number
+  targetFolderName: string
+  targetFolderId: string
+  targetFolderPath: string
+  confidence: number
+  reason: string
+  items: GroupedFile[]
+  expanded: boolean
+  approved: boolean | null
+}
+
+export interface GroupedFile {
+  fileId: string
+  filename: string
+  fromPath: string
+  toPath: string
+  confidence: number
+  approved: boolean | null
+}
+
+export interface OrganizationPreview {
+  sessionId: string
+  groups: RecommendationGroup[]
+  totalFiles: number
+  estimatedDurationMs: number
+  healthBefore: number
+  healthAfter: number
+  foldersUsed: number
+}
+
+export interface FileMoveRecord {
+  id: string
+  sessionId: string
+  fileId: string
+  filename: string
+  fromPath: string
+  toPath: string
+  status: 'pending' | 'success' | 'failed' | 'skipped'
+  error?: string
+  executedAt?: Date
+  workspaceId: string
+}
+
+export interface UndoSnapshot {
+  id: string
+  sessionId: string
+  workspaceId: string
+  createdAt: Date
+  fileMoves: FileMoveRecord[]
+  learningEventIds: string[]
+  ruleStates: Array<{ ruleId: string; confidenceBefore: number; activeBefore: boolean }>
+  folderProfileStates: Array<{ folderId: string; snapshotId: string }>
+  deleted: boolean
+  label: string
+}
+
+export interface SessionReport {
+  id: string
+  sessionId: string
+  workspaceId: string
+  filesOrganized: number
+  filesSkipped: number
+  filesFailed: number
+  rulesLearned: number
+  healthBefore: number
+  healthAfter: number
+  timeSavedMinutes: number
+  durationMs: number
+  createdAt: Date
+  exported: boolean
+}
+
+// ─── Archive, Downloads, Duplicates ──────────────────────────────────────────
+
+export interface ArchiveCandidate {
+  id: string
+  fileId: string
+  filename: string
+  absolutePath: string
+  fileSize: number
+  lastModified: Date
+  reason: string
+  suggestedArchivePath: string
+  status: 'pending' | 'archived' | 'ignored' | 'never_ask'
+  workspaceId: string
+  detectedAt: Date
+}
+
+export interface DownloadsAnalysis {
+  totalSize: number
+  totalFiles: number
+  oldInstallers: DownloadFile[]
+  duplicates: DownloadFile[]
+  tempFiles: DownloadFile[]
+  compressed: DownloadFile[]
+  unusedInstallers: DownloadFile[]
+}
+
+export interface DownloadFile {
+  filename: string
+  path: string
+  size: number
+  lastModified: Date
+  category: 'installer' | 'duplicate' | 'temp' | 'compressed' | 'unknown'
+  reason: string
+}
+
+export interface DuplicateGroup {
+  hash: string
+  size: number
+  files: Array<{ filename: string; path: string; lastModified: Date; workspaceId: string }>
+  keepIndex: number
+  totalWasted: number
+}
+
+export interface LargeFile {
+  fileId: string
+  filename: string
+  absolutePath: string
+  fileSize: number
+  lastModified: Date
+  category: string
+  recommendation: 'move' | 'archive' | 'ignore'
+}
+
+// ─── Scheduling & Insights ────────────────────────────────────────────────────
+
+export type ScheduleType = 'manual' | 'daily' | 'weekly' | 'monthly' | 'startup'
+
+export interface ScheduledTask {
+  id: string
+  workspaceId: string
+  scheduleType: ScheduleType
+  cronExpression: string
+  lastRunAt?: Date
+  nextRunAt?: Date
+  enabled: boolean
+  taskType: 'scan' | 'analysis' | 'archive_check' | 'downloads_check'
+  createdAt: Date
+}
+
+export interface ProductivityInsight {
+  id: string
+  workspaceId: string
+  insightType: string
+  title: string
+  description: string
+  value: number
+  trend: 'up' | 'down' | 'stable'
+  generatedAt: Date
+}
+
+export interface RecoveryState {
+  id: string
+  workspaceId: string
+  sessionId: string
+  pendingMoves: FileMoveRecord[]
+  undoSnapshotId?: string
+  savedAt: Date
+  recovered: boolean
+}

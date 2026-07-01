@@ -152,6 +152,116 @@ const electronAPI = {
     ipcRenderer.invoke('intelligence:get-manual-move-detections', { workspaceId }),
   respondToManualMove: (detectionId: string, response: string, workspaceId?: string) =>
     ipcRenderer.invoke('intelligence:respond-to-manual-move', { detectionId, response, workspaceId }),
+
+  // Organization Engine
+  startOrgSession: (payload: { workspaceId?: string; mode?: string }) =>
+    ipcRenderer.invoke('org:start-session', payload),
+  generateOrgGroups: (payload: { sessionId: string; workspaceId?: string }) =>
+    ipcRenderer.invoke('org:generate-groups', payload),
+  generateOrgPreview: (payload: { sessionId: string; groups: unknown; workspaceId?: string }) =>
+    ipcRenderer.invoke('org:generate-preview', payload),
+  executeOrg: (payload: { sessionId: string; approvedGroups: unknown; workspaceId?: string }) =>
+    ipcRenderer.invoke('org:execute', payload),
+  cancelOrgSession: (sessionId: string) =>
+    ipcRenderer.invoke('org:cancel-session', { sessionId }),
+  getOrgSession: (sessionId: string) =>
+    ipcRenderer.invoke('org:get-session', { sessionId }),
+  onOrgExecuteProgress: (callback: (data: { done: number; total: number; filename: string }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, data: { done: number; total: number; filename: string }) => callback(data)
+    ipcRenderer.on('org:execute-progress', listener)
+    return () => ipcRenderer.removeListener('org:execute-progress', listener)
+  },
+
+  // Undo Snapshots
+  getOrgSnapshots: (workspaceId?: string) =>
+    ipcRenderer.invoke('org:get-snapshots', { workspaceId }),
+  undoOrgSnapshot: (payload: { snapshotId: string }) =>
+    ipcRenderer.invoke('org:undo-snapshot', payload),
+  deleteOrgSnapshot: (snapshotId: string) =>
+    ipcRenderer.invoke('org:delete-snapshot', { snapshotId }),
+
+  // Session Reports
+  getOrgReport: (payload: { reportId?: string; sessionId?: string }) =>
+    ipcRenderer.invoke('org:get-report', payload),
+  getAllOrgReports: (payload?: { workspaceId?: string; limit?: number }) =>
+    ipcRenderer.invoke('org:get-all-reports', payload ?? {}),
+
+  // Archive
+  analyzeArchive: (payload?: { workspaceId?: string; yearsThreshold?: number }) =>
+    ipcRenderer.invoke('org:analyze-archive', payload ?? {}),
+  getArchiveCandidates: (workspaceId?: string) =>
+    ipcRenderer.invoke('org:get-archive-candidates', { workspaceId }),
+  respondArchive: (id: string, status: string) =>
+    ipcRenderer.invoke('org:respond-archive', { id, status }),
+
+  // Downloads
+  analyzeDownloads: (downloadsPath?: string) =>
+    ipcRenderer.invoke('org:analyze-downloads', { downloadsPath }),
+
+  // Duplicates
+  findDuplicates: (workspaceId?: string) =>
+    ipcRenderer.invoke('org:find-duplicates', { workspaceId }),
+
+  // Large Files
+  getLargeFiles: (payload?: { workspaceId?: string; thresholdMb?: number }) =>
+    ipcRenderer.invoke('org:get-large-files', payload ?? {}),
+
+  // Protected Folders
+  getProtectedFolders: () =>
+    ipcRenderer.invoke('org:get-protected-folders'),
+  protectFolder: (folderId: string, reason?: string) =>
+    ipcRenderer.invoke('org:protect-folder', { folderId, reason }),
+  unprotectFolder: (folderId: string) =>
+    ipcRenderer.invoke('org:unprotect-folder', { folderId }),
+
+  // Pinned & Ignored
+  getPinnedFiles: (workspaceId?: string) =>
+    ipcRenderer.invoke('org:get-pinned-files', { workspaceId }),
+  getIgnoredFiles: (workspaceId?: string) =>
+    ipcRenderer.invoke('org:get-ignored-files', { workspaceId }),
+  clearIgnoreList: (workspaceId?: string) =>
+    ipcRenderer.invoke('org:clear-ignore-list', { workspaceId }),
+
+  // Background Monitor
+  startMonitor: (desktopPath: string) =>
+    ipcRenderer.invoke('org:start-monitor', { desktopPath }),
+  stopMonitor: () =>
+    ipcRenderer.invoke('org:stop-monitor'),
+  getMonitorStatus: () =>
+    ipcRenderer.invoke('org:monitor-status'),
+  onMonitorNewFiles: (callback: (data: { count: number }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, data: { count: number }) => callback(data)
+    ipcRenderer.on('monitor:new-files', listener)
+    return () => ipcRenderer.removeListener('monitor:new-files', listener)
+  },
+
+  // Schedules
+  getSchedules: (workspaceId?: string) =>
+    ipcRenderer.invoke('org:get-schedules', { workspaceId }),
+  createSchedule: (payload: { workspaceId?: string; scheduleType: string; taskType: string }) =>
+    ipcRenderer.invoke('org:create-schedule', payload),
+  setScheduleEnabled: (id: string, enabled: boolean) =>
+    ipcRenderer.invoke('org:set-schedule-enabled', { id, enabled }),
+  deleteSchedule: (id: string) =>
+    ipcRenderer.invoke('org:delete-schedule', { id }),
+
+  // Health Suggestions
+  getHealthSuggestions: (workspaceId?: string) =>
+    ipcRenderer.invoke('org:get-health-suggestions', { workspaceId }),
+
+  // Recovery
+  checkRecovery: (workspaceId?: string) =>
+    ipcRenderer.invoke('org:check-recovery', { workspaceId }),
+
+  // Export / Import
+  exportWorkspace: (workspaceId?: string) =>
+    ipcRenderer.invoke('org:export-workspace', { workspaceId }),
+  importWorkspace: (workspaceId?: string) =>
+    ipcRenderer.invoke('org:import-workspace', { workspaceId }),
+
+  // Productivity Insights
+  getInsights: (workspaceId?: string) =>
+    ipcRenderer.invoke('org:get-insights', { workspaceId }),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)
