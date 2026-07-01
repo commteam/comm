@@ -19,6 +19,7 @@ import { recoveryManagerService } from '../services/recovery-manager.service'
 import { exportImportService } from '../services/export-import.service'
 import { productivityInsightsService } from '../services/productivity-insights.service'
 import { desktopStatsService } from '../services/desktop-stats.service'
+import { privacyAuditService } from '../services/privacy-audit.service'
 import { settingsRepo } from '../database/repository'
 import type { RecommendationGroup } from '../../../src/shared/types/intelligence'
 
@@ -338,6 +339,14 @@ export function registerOrganizationEngineHandlers(): void {
       const wsId = payload?.workspaceId ?? workspaceService.getActiveId()
       productivityInsightsService.generate(wsId)
       return ok(productivityInsightsService.getAll(wsId))
+    } catch (e) { return err(String(e)) }
+  })
+
+  // ─── Privacy Audit ──────────────────────────────────────────────────────────
+
+  ipcMain.handle('org:get-privacy-audit', (_event, payload?: { workspaceId?: string }) => {
+    try {
+      return ok(privacyAuditService.getStats(payload?.workspaceId))
     } catch (e) { return err(String(e)) }
   })
 

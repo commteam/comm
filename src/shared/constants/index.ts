@@ -69,4 +69,5 @@ export const ROUTES = {
   NOTIFICATIONS: '/notifications',
   HELP: '/help',
   ABOUT: '/about',
+  PRIVACY_AUDIT: '/privacy-audit',
 } as const

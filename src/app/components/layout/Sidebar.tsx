@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, ScanLine, Sparkles, Clock, Activity,
   BookOpen, FolderOpen, Download, BarChart3, Settings,
-  HelpCircle, Info, ChevronLeft, ChevronRight,
+  HelpCircle, Info, ChevronLeft, ChevronRight, Shield,
 } from 'lucide-react'
 import { ROUTES } from '../../../shared/constants'
 import { useLayoutStore } from '../../stores/layout.store'
@@ -39,6 +39,7 @@ const NAV_GROUPS = [
 
 const BOTTOM_ITEMS = [
   { path: ROUTES.SETTINGS, label: 'Settings', icon: Settings },
+  { path: ROUTES.PRIVACY_AUDIT, label: 'Privacy', icon: Shield },
   { path: '/help', label: 'Help', icon: HelpCircle },
   { path: '/about', label: 'About', icon: Info },
 ]

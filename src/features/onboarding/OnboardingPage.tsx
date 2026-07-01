@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Brain, FolderOpen, Check, ChevronRight, ScanLine, Sparkles, Shield, Edit2 } from 'lucide-react'
+import {
+  Brain, FolderOpen, Check, ChevronRight, ScanLine, Sparkles,
+  Shield, Edit2, XCircle, CheckCircle2, Lock, Wifi, Cloud, Eye, FileText, Cpu,
+} from 'lucide-react'
 import { useSettingsStore } from '../../app/stores/settings.store'
 import { useToast } from '../../hooks/useToast'
 import { useElectron } from '../../hooks/useElectron'
@@ -10,12 +13,13 @@ import { Button } from '../../app/components/ui/Button'
 import { Card } from '../../app/components/ui/Card'
 import { cn } from '../../shared/utils/cn'
 
-type Step = 'welcome' | 'desktop-path' | 'folder-discovery' | 'ai-learning' | 'scan' | 'complete'
+type Step = 'welcome' | 'privacy' | 'desktop-path' | 'folder-discovery' | 'ai-learning' | 'scan' | 'complete'
 
-const STEPS: Step[] = ['welcome', 'desktop-path', 'folder-discovery', 'ai-learning', 'scan', 'complete']
+const STEPS: Step[] = ['welcome', 'privacy', 'desktop-path', 'folder-discovery', 'ai-learning', 'scan', 'complete']
 
 const STEP_LABELS: Record<Step, string> = {
   welcome: 'Welcome',
+  privacy: 'Privacy',
   'desktop-path': 'Desktop Path',
   'folder-discovery': 'Folders',
   'ai-learning': 'AI Learning',
@@ -107,14 +111,17 @@ export function OnboardingPage() {
           className="max-w-lg w-full text-center"
         >
           {step === 'welcome' && (
-            <WelcomeStep onNext={() => setStep('desktop-path')} />
+            <WelcomeStep onNext={() => setStep('privacy')} />
+          )}
+          {step === 'privacy' && (
+            <PrivacyStep onNext={() => setStep('desktop-path')} />
           )}
           {step === 'desktop-path' && (
             <DesktopPathStep
               currentPath={settings?.general.desktopPath ?? ''}
               onSelectFolder={handleSelectFolder}
               onNext={() => setStep('folder-discovery')}
-              onBack={() => setStep('welcome')}
+              onBack={() => setStep('privacy')}
             />
           )}
           {step === 'folder-discovery' && (
@@ -162,6 +169,113 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
       </p>
       <Button variant="primary" size="lg" onClick={onNext} icon={<ChevronRight size={16} />}>
         Get Started
+      </Button>
+    </div>
+  )
+}
+
+function PrivacyStep({ onNext }: { onNext: () => void }) {
+  const [acknowledged, setAcknowledged] = useState(false)
+
+  const neverItems = [
+    { icon: FileText, label: 'Reads document contents' },
+    { icon: Eye, label: 'Opens your files' },
+    { icon: Cloud, label: 'Uploads files to the cloud' },
+    { icon: Wifi, label: 'Sends data to external services' },
+    { icon: Cpu, label: 'Uses cloud AI providers' },
+    { icon: Shield, label: 'Collects telemetry' },
+  ]
+
+  const onlyItems = [
+    'File name and extension',
+    'Folder location',
+    'File size',
+    'Created and modified dates',
+    'User-approved organization history',
+  ]
+
+  return (
+    <div className="text-left">
+      <div className="flex items-center gap-3 mb-5 justify-center">
+        <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+          <Lock size={18} className="text-green-600 dark:text-green-400" />
+        </div>
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-fluent-neutral-140 dark:text-fluent-neutral-10">Privacy & Security</h2>
+          <p className="text-xs text-fluent-neutral-70 dark:text-fluent-neutral-90">Please read before continuing</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        {/* Never column */}
+        <Card padding="sm" className="border-red-100 dark:border-red-900/30 bg-red-50/50 dark:bg-red-950/10">
+          <div className="flex items-center gap-1.5 mb-3">
+            <XCircle size={13} className="text-red-500" />
+            <p className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wide">DeskPilot AI NEVER</p>
+          </div>
+          <div className="space-y-2">
+            {neverItems.map(item => {
+              const Icon = item.icon
+              return (
+                <div key={item.label} className="flex items-center gap-2 text-xs text-fluent-neutral-110 dark:text-fluent-neutral-50">
+                  <Icon size={11} className="text-red-400 shrink-0" />
+                  {item.label}
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+
+        {/* Only column */}
+        <Card padding="sm" className="border-green-100 dark:border-green-900/30 bg-green-50/50 dark:bg-green-950/10">
+          <div className="flex items-center gap-1.5 mb-3">
+            <CheckCircle2 size={13} className="text-green-500" />
+            <p className="text-xs font-bold text-green-700 dark:text-green-400 uppercase tracking-wide">ONLY uses</p>
+          </div>
+          <div className="space-y-2">
+            {onlyItems.map(item => (
+              <div key={item} className="flex items-center gap-2 text-xs text-fluent-neutral-110 dark:text-fluent-neutral-50">
+                <CheckCircle2 size={11} className="text-green-500 shrink-0" />
+                {item}
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <Card padding="sm" className="mb-4 bg-blue-50/50 dark:bg-blue-950/10 border-blue-100 dark:border-blue-900/30">
+        <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
+          <strong>Everything runs locally on your computer.</strong> DeskPilot AI works completely offline and never requires an internet connection. No data ever leaves your device.
+        </p>
+      </Card>
+
+      {/* Mandatory acknowledgment checkbox */}
+      <label className="flex items-start gap-3 mb-5 cursor-pointer group">
+        <div
+          onClick={() => setAcknowledged(a => !a)}
+          className={cn(
+            'w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all',
+            acknowledged
+              ? 'bg-fluent-accent border-fluent-accent'
+              : 'border-fluent-neutral-60 dark:border-fluent-neutral-90 hover:border-fluent-accent',
+          )}
+        >
+          {acknowledged && <Check size={11} className="text-white" strokeWidth={3} />}
+        </div>
+        <span className="text-sm text-fluent-neutral-110 dark:text-fluent-neutral-50 leading-relaxed">
+          I understand that DeskPilot AI only uses file metadata and never reads or uploads my files. All processing stays on my computer.
+        </span>
+      </label>
+
+      <Button
+        variant="primary"
+        size="md"
+        className="w-full"
+        onClick={onNext}
+        disabled={!acknowledged}
+        icon={<ChevronRight size={15} />}
+      >
+        I understand — Continue
       </Button>
     </div>
   )
@@ -298,7 +412,7 @@ function ScanStep({ isScanning, scanComplete, onScan, onNext, onBack }: {
       </div>
       <h2 className="text-2xl font-bold text-fluent-neutral-140 dark:text-fluent-neutral-10 mb-2">First scan</h2>
       <p className="text-fluent-neutral-80 dark:text-fluent-neutral-80 text-sm mb-6 max-w-sm mx-auto">
-        DeskPilot AI will analyze your desktop files. No files will be moved — this is read-only.
+        DeskPilot AI will analyze your desktop files using metadata only. No files are opened or read.
       </p>
 
       {scanComplete && (
@@ -325,7 +439,7 @@ function ScanStep({ isScanning, scanComplete, onScan, onNext, onBack }: {
       {isScanning && (
         <div className="flex items-center justify-center gap-3 mb-6 text-fluent-neutral-90 dark:text-fluent-neutral-70">
           <div className="w-5 h-5 border-2 border-fluent-accent border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm">Analysing your desktop…</span>
+          <span className="text-sm">Scanning metadata…</span>
         </div>
       )}
 
@@ -358,7 +472,7 @@ function CompleteStep({ onFinish }: { onFinish: () => void }) {
         DeskPilot AI is ready. Head to the dashboard to review your first organization recommendations.
       </p>
       <div className="flex flex-col gap-1.5 items-center mb-8">
-        {['38 files ready to organize', 'AI learned 3 folder profiles', 'All your existing folders protected'].map(tip => (
+        {['38 files ready to organize', 'AI learned 3 folder profiles', 'All your existing folders protected', 'Your files were never opened or read'].map(tip => (
           <div key={tip} className="flex items-center gap-2 text-sm text-fluent-neutral-80 dark:text-fluent-neutral-80">
             <Check size={13} className="text-green-500" />
             {tip}

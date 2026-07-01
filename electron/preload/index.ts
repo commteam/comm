@@ -262,6 +262,10 @@ const electronAPI = {
   // Productivity Insights
   getInsights: (workspaceId?: string) =>
     ipcRenderer.invoke('org:get-insights', { workspaceId }),
+
+  // Privacy Audit
+  getPrivacyAudit: (workspaceId?: string) =>
+    ipcRenderer.invoke('org:get-privacy-audit', { workspaceId }),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

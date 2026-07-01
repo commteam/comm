@@ -1,4 +1,6 @@
-import { Settings, Palette, Bell, Shield, Database, Brain, Zap, Monitor } from 'lucide-react'
+import { Settings, Palette, Bell, Shield, Database, Brain, Zap, Monitor, Lock, CheckCircle2, XCircle, ExternalLink } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { ROUTES } from '../../shared/constants'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PageWrapper, PageHeader } from '../../app/components/layout/PageWrapper'
@@ -13,7 +15,7 @@ import { useToast } from '../../hooks/useToast'
 import { useElectron } from '../../hooks/useElectron'
 import { cn } from '../../shared/utils/cn'
 
-type Section = 'general' | 'appearance' | 'notifications' | 'ai' | 'protected' | 'database' | 'performance' | 'advanced'
+type Section = 'general' | 'appearance' | 'notifications' | 'ai' | 'protected' | 'privacy' | 'database' | 'performance' | 'advanced'
 
 const SECTIONS: { key: Section; label: string; icon: React.ElementType; description: string }[] = [
   { key: 'general', label: 'General', icon: Settings, description: 'Desktop path and startup' },
@@ -21,6 +23,7 @@ const SECTIONS: { key: Section; label: string; icon: React.ElementType; descript
   { key: 'notifications', label: 'Notifications', icon: Bell, description: 'Alerts and sounds' },
   { key: 'ai', label: 'AI & Learning', icon: Brain, description: 'AI provider and thresholds' },
   { key: 'protected', label: 'Protected Folders', icon: Shield, description: 'Folders DeskPilot won\'t touch' },
+  { key: 'privacy', label: 'Privacy', icon: Lock, description: 'Data protection settings' },
   { key: 'database', label: 'Database', icon: Database, description: 'Storage and maintenance' },
   { key: 'performance', label: 'Performance', icon: Zap, description: 'Scan intervals' },
   { key: 'advanced', label: 'Advanced', icon: Monitor, description: 'Developer options' },
@@ -31,6 +34,7 @@ export function SettingsPage() {
   const { settings, updateSettings, resetSettings } = useSettingsStore()
   const toast = useToast()
   const electron = useElectron()
+  const navigate = useNavigate()
 
   if (!settings) return null
 
@@ -233,6 +237,52 @@ export function SettingsPage() {
                   <Button variant="outline" size="sm" icon={<Shield size={13} />} className="mt-3">
                     Add Protected Folder
                   </Button>
+                </SettingsSection>
+              )}
+
+              {activeSection === 'privacy' && (
+                <SettingsSection title="Privacy">
+                  <div className="mb-4 px-1">
+                    <p className="text-xs text-fluent-neutral-70 dark:text-fluent-neutral-90 leading-relaxed">
+                      DeskPilot AI is built with privacy as a core feature. These settings are fixed by design and cannot be changed.
+                    </p>
+                  </div>
+                  {[
+                    { label: 'Storage', value: 'Local Only', icon: Database, ok: true },
+                    { label: 'Internet Access', value: 'Disabled', icon: Lock, ok: true },
+                    { label: 'Cloud AI', value: 'Disabled', icon: Lock, ok: true },
+                    { label: 'Document Reading', value: 'Disabled', icon: XCircle, ok: true },
+                    { label: 'Content Analysis', value: 'Disabled', icon: XCircle, ok: true },
+                    { label: 'Telemetry', value: 'Disabled', icon: XCircle, ok: true },
+                    { label: 'Metadata Analysis', value: 'Enabled', icon: CheckCircle2, ok: false },
+                  ].map((row, i) => {
+                    const Icon = row.icon
+                    return (
+                      <div key={row.label}>
+                        {i > 0 && <Separator />}
+                        <div className="flex items-center justify-between gap-4 py-3">
+                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                            <Icon size={14} className={row.label === 'Metadata Analysis' ? 'text-green-500' : 'text-fluent-neutral-70'} />
+                            <span className="text-sm font-medium text-fluent-neutral-130 dark:text-fluent-neutral-20">{row.label}</span>
+                          </div>
+                          <Badge variant={row.label === 'Metadata Analysis' ? 'success' : 'muted'} size="sm">
+                            {row.value}
+                          </Badge>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <Separator />
+                  <div className="pt-3">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={<ExternalLink size={13} />}
+                      onClick={() => navigate(ROUTES.PRIVACY_AUDIT)}
+                    >
+                      View Privacy Audit
+                    </Button>
+                  </div>
                 </SettingsSection>
               )}
 

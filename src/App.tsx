@@ -16,6 +16,7 @@ import { SettingsPage } from './features/settings/SettingsPage'
 import { NotificationsPage } from './features/notifications/NotificationsPage'
 import { HelpPage } from './features/help/HelpPage'
 import { AboutPage } from './features/about/AboutPage'
+import { PrivacyAuditPage } from './features/privacy/PrivacyAuditPage'
 import { useSettingsStore } from './app/stores/settings.store'
 import { useTheme } from './hooks/useTheme'
 import { ROUTES } from './shared/constants'
@@ -75,6 +76,7 @@ export default function App() {
           <Route path={ROUTES.NOTIFICATIONS} element={<NotificationsPage />} />
           <Route path={ROUTES.HELP} element={<HelpPage />} />
           <Route path={ROUTES.ABOUT} element={<AboutPage />} />
+          <Route path={ROUTES.PRIVACY_AUDIT} element={<PrivacyAuditPage />} />
         </Route>
       </Routes>
     </HashRouter>
