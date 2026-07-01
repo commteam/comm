@@ -1,4 +1,4 @@
-
+import { memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, ChevronRight, CheckCircle2, XCircle, FolderOpen, File } from 'lucide-react'
 import { Button } from '../../../app/components/ui/Button'
@@ -14,7 +14,7 @@ interface Props {
   onToggleExpand: () => void
 }
 
-export function RecommendationGroupCard({
+export const RecommendationGroupCard = memo(function RecommendationGroupCard({
   group, onApproveGroup, onRejectGroup, onApproveFile, onRejectFile, onToggleExpand
 }: Props) {
   const approvedCount = group.items.filter(i => i.approved === true).length
@@ -159,4 +159,4 @@ export function RecommendationGroupCard({
       </AnimatePresence>
     </div>
   )
-}
+})
