@@ -1,10 +1,9 @@
-import { Activity, Filter, Search } from 'lucide-react'
-import { useState } from 'react'
+import { Activity, Search } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { PageWrapper, PageHeader } from '../../app/components/layout/PageWrapper'
 import { Input } from '../../app/components/ui/Input'
 import { TimelineDot } from '../timeline/components/TimelineDot'
-import { mockTimelineEntries } from '../../shared/mock'
 import { formatDateTime } from '../../shared/utils'
 import type { TimelineEntry } from '../../shared/types'
 
@@ -21,11 +20,24 @@ const filterMap: Record<Filter, string[]> = {
   Undone: ['undo_performed'],
 }
 
+type IpcResult<T> = { success: true; data: T } | { success: false; error: string }
+const api = () => (window as any).electronAPI
+
 export function ActivityPage() {
   const [filter, setFilter] = useState<Filter>('All')
   const [search, setSearch] = useState('')
+  const [entries, setEntries] = useState<TimelineEntry[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const filtered = mockTimelineEntries.filter(e => {
+  useEffect(() => {
+    setLoading(true)
+    const p: Promise<IpcResult<TimelineEntry[]>> = api().getTimelineEntries(500)
+    p.then(res => {
+      if (res.success) setEntries(res.data)
+    }).finally(() => setLoading(false))
+  }, [])
+
+  const filtered = entries.filter(e => {
     const types = filterMap[filter]
     if (types.length > 0 && !types.includes(e.type)) return false
     if (search && !e.title.toLowerCase().includes(search.toLowerCase()) && !e.description.toLowerCase().includes(search.toLowerCase())) return false
@@ -40,7 +52,6 @@ export function ActivityPage() {
         icon={<Activity size={18} />}
       />
 
-      {/* Filters */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <div className="flex gap-1 flex-wrap">
           {FILTERS.map(f => (
@@ -67,13 +78,11 @@ export function ActivityPage() {
         </div>
       </div>
 
-      {/* Results count */}
       <p className="text-xs text-fluent-neutral-70 dark:text-fluent-neutral-90 mb-3">
-        {filtered.length} event{filtered.length !== 1 ? 's' : ''}
+        {loading ? 'Loading…' : `${filtered.length} event${filtered.length !== 1 ? 's' : ''}`}
       </p>
 
-      {/* Activity list */}
-      {filtered.length === 0 ? (
+      {!loading && filtered.length === 0 ? (
         <EmptyState />
       ) : (
         <div className="space-y-1.5">

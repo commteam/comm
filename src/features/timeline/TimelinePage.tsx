@@ -1,11 +1,11 @@
 import { Clock, FolderOpen, Undo2, ArrowRight } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { PageWrapper, PageHeader } from '../../app/components/layout/PageWrapper'
 import { Card } from '../../app/components/ui/Card'
 import { Button } from '../../app/components/ui/Button'
 import { Badge } from '../../app/components/ui/Badge'
 import { TimelineDot } from './components/TimelineDot'
-import { mockTimelineEntries } from '../../shared/mock'
 import { formatRelativeTime } from '../../shared/utils'
 import type { TimelineEntry } from '../../shared/types'
 
@@ -46,8 +46,22 @@ const typeLabels: Record<string, { label: string; variant: 'success' | 'muted' |
   first_run: { label: 'Install', variant: 'accent' },
 }
 
+const api = () => (window as any).electronAPI
+
 export function TimelinePage() {
-  const grouped = groupEntries(mockTimelineEntries)
+  const [entries, setEntries] = useState<TimelineEntry[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    api().getTimelineEntries(200)
+      .then((res: { success: boolean; data: TimelineEntry[] }) => {
+        if (res.success) setEntries(res.data)
+      })
+      .finally(() => setLoading(false))
+  }, [])
+
+  const grouped = groupEntries(entries)
 
   return (
     <PageWrapper maxWidth="md">
@@ -62,10 +76,25 @@ export function TimelinePage() {
         }
       />
 
+      {loading && (
+        <div className="text-center py-12 text-fluent-neutral-70 dark:text-fluent-neutral-90">
+          <Clock size={28} className="mx-auto mb-3 opacity-30 animate-pulse" strokeWidth={1.5} />
+          <p className="text-sm">Loading timeline…</p>
+        </div>
+      )}
+
+      {!loading && entries.length === 0 && (
+        <div className="text-center py-16 text-fluent-neutral-70 dark:text-fluent-neutral-90">
+          <Clock size={36} className="mx-auto mb-4 opacity-20" strokeWidth={1.5} />
+          <p className="font-semibold mb-1">No history yet</p>
+          <p className="text-sm">Run your first organization session to see activity here.</p>
+        </div>
+      )}
+
       <div className="space-y-6">
         {GROUP_ORDER.map(group => {
-          const entries = grouped[group]
-          if (!entries || entries.length === 0) return null
+          const groupEntries = grouped[group]
+          if (!groupEntries || groupEntries.length === 0) return null
           return (
             <div key={group}>
               <div className="flex items-center gap-3 mb-3">
@@ -74,11 +103,9 @@ export function TimelinePage() {
               </div>
 
               <div className="relative pl-5">
-                {/* Vertical line */}
                 <div className="absolute left-1.5 top-0 bottom-0 w-px bg-fluent-neutral-30 dark:bg-fluent-neutral-120" />
-
                 <div className="space-y-2">
-                  {entries.map((entry, i) => (
+                  {groupEntries.map((entry, i) => (
                     <TimelineCard key={entry.id} entry={entry} index={i} />
                   ))}
                 </div>
@@ -101,7 +128,6 @@ function TimelineCard({ entry, index }: { entry: TimelineEntry; index: number })
       transition={{ delay: index * 0.04, duration: 0.2 }}
       className="relative"
     >
-      {/* Dot */}
       <div className="absolute -left-[17px] top-3.5">
         <TimelineDot type={entry.type} />
       </div>

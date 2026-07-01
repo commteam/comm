@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { ErrorBoundary } from './app/components/ErrorBoundary'
 import { AppLayout } from './app/components/layout/AppLayout'
 import { DashboardPage } from './features/dashboard/DashboardPage'
 import { OnboardingPage } from './features/onboarding/OnboardingPage'
@@ -55,6 +56,7 @@ export default function App() {
   const isOnboardingComplete = settings?.general.onboardingCompleted ?? false
 
   return (
+    <ErrorBoundary>
     <HashRouter>
       <Routes>
         <Route path={ROUTES.ONBOARDING} element={<OnboardingPage />} />
@@ -76,5 +78,6 @@ export default function App() {
         </Route>
       </Routes>
     </HashRouter>
+    </ErrorBoundary>
   )
 }

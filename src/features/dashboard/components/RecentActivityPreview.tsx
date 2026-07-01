@@ -1,16 +1,29 @@
 import { ChevronRight } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { Card, CardHeader, CardTitle } from '../../../app/components/ui/Card'
 import { Button } from '../../../app/components/ui/Button'
-import { mockTimelineEntries } from '../../../shared/mock'
 import { formatRelativeTime } from '../../../shared/utils'
 import { TimelineDot } from '../../timeline/components/TimelineDot'
+import type { TimelineEntry } from '../../../shared/types'
 
 interface RecentActivityPreviewProps {
   onViewAll: () => void
 }
 
+const api = () => (window as any).electronAPI
+
 export function RecentActivityPreview({ onViewAll }: RecentActivityPreviewProps) {
-  const recent = mockTimelineEntries.slice(0, 5)
+  const [entries, setEntries] = useState<TimelineEntry[]>([])
+
+  useEffect(() => {
+    api().getTimelineEntries(5)
+      .then((res: { success: boolean; data: TimelineEntry[] }) => {
+        if (res.success) setEntries(res.data)
+      })
+      .catch(() => { })
+  }, [])
+
+  if (entries.length === 0) return null
 
   return (
     <Card padding="md">
@@ -21,7 +34,7 @@ export function RecentActivityPreview({ onViewAll }: RecentActivityPreviewProps)
         </Button>
       </CardHeader>
       <div className="space-y-2">
-        {recent.map(entry => (
+        {entries.map(entry => (
           <div key={entry.id} className="flex items-center gap-3 py-1.5 px-2 rounded-fluent hover:bg-fluent-neutral-10 dark:hover:bg-fluent-neutral-120 transition-colors">
             <TimelineDot type={entry.type} size="sm" />
             <div className="flex-1 min-w-0">
