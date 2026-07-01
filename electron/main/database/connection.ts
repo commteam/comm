@@ -4,6 +4,7 @@ import path from 'path'
 import fs from 'fs'
 import log from 'electron-log'
 import { SCHEMA_SQL } from '../../../src/database/schema'
+import { INTELLIGENCE_SCHEMA_SQL } from '../../../src/database/schema/intelligence'
 import { DB_FILE_NAME } from '../../../src/shared/constants'
 
 let db: Database.Database | null = null
@@ -39,6 +40,7 @@ export function initDatabase(): Database.Database {
 
   // Apply schema
   db.exec(SCHEMA_SQL)
+  db.exec(INTELLIGENCE_SCHEMA_SQL)
 
   log.info('Database initialized successfully')
   return db
