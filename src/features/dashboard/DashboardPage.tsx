@@ -18,6 +18,7 @@ import { getHealthColor, getHealthLabel } from '../../shared/mock/dashboard'
 import { ROUTES } from '../../shared/constants'
 import { formatRelativeTime } from '../../shared/utils'
 import { useDesktopStats } from '../../hooks/useIntelligence'
+import { useState, useEffect } from 'react'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -29,9 +30,20 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.2 } },
 }
 
+const api = () => (window as any).electronAPI
+
 export function DashboardPage() {
   const navigate = useNavigate()
   const { stats, breakdown, loading, refresh } = useDesktopStats()
+  const [hasPendingRecovery, setHasPendingRecovery] = useState(false)
+
+  useEffect(() => {
+    api().checkRecovery?.()
+      .then((res: { success: boolean; data: { recovered: boolean } | null }) => {
+        if (res.success && res.data) setHasPendingRecovery(true)
+      })
+      .catch(() => { })
+  }, [])
 
   const healthScore = stats?.healthScore ?? 0
   const healthColor = getHealthColor(healthScore)
@@ -63,6 +75,22 @@ export function DashboardPage() {
 
   return (
     <PageWrapper maxWidth="xl">
+      {hasPendingRecovery && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 flex items-center gap-3 px-4 py-3 rounded-fluent-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40"
+        >
+          <AlertCircle size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Incomplete session detected</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400">A previous organization session was interrupted. Go to Organize to resume or discard it.</p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => navigate(ROUTES.ORGANIZE)}>
+            Resume
+          </Button>
+        </motion.div>
+      )}
       {/* Welcome header */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}

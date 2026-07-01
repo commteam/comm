@@ -25,4 +25,5 @@ export function registerAppHandlers(): void {
     })
     return result.canceled ? null : result.filePaths[0]
   })
+
 }
