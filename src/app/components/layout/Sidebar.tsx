@@ -1,108 +1,174 @@
 import { NavLink } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  LayoutDashboard, ScanLine, Sparkles, Clock, Activity,
+  BookOpen, FolderOpen, Download, BarChart3, Settings,
+  HelpCircle, Info, ChevronLeft, ChevronRight,
+} from 'lucide-react'
 import { ROUTES } from '../../../shared/constants'
+import { useLayoutStore } from '../../stores/layout.store'
+import { Tooltip } from '../ui'
+import { cn } from '../../../shared/utils/cn'
 
-const navItems = [
+const NAV_GROUPS = [
   {
-    path: ROUTES.DASHBOARD,
-    label: 'Dashboard',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <rect x="1" y="1" width="6" height="6" rx="1.5" />
-        <rect x="11" y="1" width="6" height="6" rx="1.5" />
-        <rect x="1" y="11" width="6" height="6" rx="1.5" />
-        <rect x="11" y="11" width="6" height="6" rx="1.5" />
-      </svg>
-    ),
+    label: 'Main',
+    items: [
+      { path: ROUTES.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
+      { path: ROUTES.ORGANIZE, label: 'Organize', icon: Sparkles, badge: '8' },
+    ],
   },
   {
-    path: ROUTES.ORGANIZE,
-    label: 'Organize',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M2 9h14M2 4h10M2 14h7" strokeLinecap="round" />
-        <path d="M14 12l3 3-3 3" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
+    label: 'Insights',
+    items: [
+      { path: '/scan', label: 'Desktop Scan', icon: ScanLine },
+      { path: ROUTES.TIMELINE, label: 'Timeline', icon: Clock },
+      { path: '/activity', label: 'Activity', icon: Activity },
+      { path: '/analytics', label: 'Analytics', icon: BarChart3 },
+    ],
   },
   {
-    path: ROUTES.TIMELINE,
-    label: 'Timeline',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <circle cx="9" cy="9" r="7.5" />
-        <path d="M9 5v4l2.5 2.5" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    path: ROUTES.RULES,
-    label: 'Rules',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M3 4h12M3 9h8M3 14h10" strokeLinecap="round" />
-        <circle cx="14" cy="9" r="2.5" />
-      </svg>
-    ),
+    label: 'Management',
+    items: [
+      { path: ROUTES.RULES, label: 'Rules', icon: BookOpen, badge: '43' },
+      { path: '/folder-profiles', label: 'Folder Profiles', icon: FolderOpen },
+      { path: '/downloads', label: 'Downloads', icon: Download },
+    ],
   },
 ]
 
-const bottomNavItems = [
-  {
-    path: ROUTES.NOTIFICATIONS,
-    label: 'Notifications',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M9 2a5 5 0 0 1 5 5v3l1.5 2H2.5L4 10V7a5 5 0 0 1 5-5z" />
-        <path d="M7 14a2 2 0 0 0 4 0" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    path: ROUTES.SETTINGS,
-    label: 'Settings',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <circle cx="9" cy="9" r="2.5" />
-        <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.1 3.1l1.4 1.4M13.5 13.5l1.4 1.4M3.1 14.9l1.4-1.4M13.5 4.5l1.4-1.4" strokeLinecap="round" />
-      </svg>
-    ),
-  },
+const BOTTOM_ITEMS = [
+  { path: ROUTES.SETTINGS, label: 'Settings', icon: Settings },
+  { path: '/help', label: 'Help', icon: HelpCircle },
+  { path: '/about', label: 'About', icon: Info },
 ]
 
 export function Sidebar() {
+  const { sidebarCollapsed, toggleSidebar } = useLayoutStore()
   return (
-    <aside className="w-52 shrink-0 flex flex-col h-full bg-fluent-neutral-10 dark:bg-fluent-neutral-140 border-r border-fluent-neutral-40/50 dark:border-fluent-neutral-120/50 py-2 px-2">
-      <nav className="flex-1 flex flex-col gap-0.5">
-        {navItems.map(item => (
-          <SidebarNavItem key={item.path} {...item} />
-        ))}
-      </nav>
+    <motion.aside
+      animate={{ width: sidebarCollapsed ? 56 : 208 }}
+      transition={{ duration: 0.2, ease: 'easeInOut' }}
+      className="relative shrink-0 flex flex-col h-full bg-fluent-neutral-10 dark:bg-fluent-neutral-140 border-r border-fluent-neutral-40/50 dark:border-fluent-neutral-120/50 overflow-hidden"
+    >
+      {/* Logo area */}
+      <div className={cn('flex items-center px-3 py-3 mb-1 gap-2.5', sidebarCollapsed && 'justify-center px-0')}>
+        <div className="w-7 h-7 rounded-lg bg-fluent-accent flex items-center justify-center shrink-0">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="1.5" y="1.5" width="5" height="5" rx="1.5" fill="white" />
+            <rect x="9.5" y="1.5" width="5" height="5" rx="1.5" fill="white" opacity="0.7" />
+            <rect x="1.5" y="9.5" width="5" height="5" rx="1.5" fill="white" opacity="0.7" />
+            <rect x="9.5" y="9.5" width="5" height="5" rx="1.5" fill="white" opacity="0.4" />
+          </svg>
+        </div>
+        <AnimatePresence>
+          {!sidebarCollapsed && (
+            <motion.span
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.15 }}
+              className="text-sm font-bold text-fluent-neutral-140 dark:text-fluent-neutral-10 whitespace-nowrap tracking-tight"
+            >
+              DeskPilot AI
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </div>
 
-      <div className="border-t border-fluent-neutral-40/50 dark:border-fluent-neutral-120/50 pt-2 mt-2 flex flex-col gap-0.5">
-        {bottomNavItems.map(item => (
-          <SidebarNavItem key={item.path} {...item} />
+      {/* Nav groups */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4 py-1">
+        {NAV_GROUPS.map(group => (
+          <div key={group.label}>
+            <AnimatePresence>
+              {!sidebarCollapsed && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="px-2 mb-1 text-[10px] font-semibold text-fluent-neutral-80 dark:text-fluent-neutral-90 uppercase tracking-widest"
+                >
+                  {group.label}
+                </motion.p>
+              )}
+            </AnimatePresence>
+            <div className="space-y-0.5">
+              {group.items.map(item => (
+                <SidebarItem key={item.path} {...item} collapsed={sidebarCollapsed} />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
-    </aside>
+
+      {/* Bottom items */}
+      <div className="px-2 pb-2 border-t border-fluent-neutral-40/50 dark:border-fluent-neutral-120/50 pt-2 space-y-0.5">
+        {BOTTOM_ITEMS.map(item => (
+          <SidebarItem key={item.path} {...item} collapsed={sidebarCollapsed} />
+        ))}
+      </div>
+
+      {/* Collapse toggle */}
+      <button
+        onClick={toggleSidebar}
+        className="absolute -right-3 top-16 w-6 h-6 rounded-full bg-white dark:bg-fluent-neutral-120 border border-fluent-neutral-40 dark:border-fluent-neutral-110 shadow-fluent-4 flex items-center justify-center text-fluent-neutral-80 hover:text-fluent-accent transition-colors z-10"
+      >
+        {sidebarCollapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+      </button>
+    </motion.aside>
   )
 }
 
-interface SidebarNavItemProps {
+interface SidebarItemProps {
   path: string
   label: string
-  icon: React.ReactNode
+  icon: React.ElementType
+  badge?: string
+  collapsed: boolean
 }
 
-function SidebarNavItem({ path, label, icon }: SidebarNavItemProps) {
-  return (
+function SidebarItem({ path, label, icon: Icon, badge, collapsed }: SidebarItemProps) {
+  const content = (
     <NavLink
       to={path}
       className={({ isActive }) =>
-        `nav-item ${isActive ? 'nav-item-active' : ''}`
+        cn(
+          'flex items-center gap-2.5 px-2 py-2 rounded-fluent text-sm font-medium transition-all duration-150 group relative',
+          collapsed ? 'justify-center' : '',
+          isActive
+            ? 'bg-fluent-accent/10 dark:bg-fluent-accent/15 text-fluent-accent dark:text-fluent-accent-light'
+            : 'text-fluent-neutral-110 dark:text-fluent-neutral-60 hover:bg-fluent-neutral-20 dark:hover:bg-fluent-neutral-130 hover:text-fluent-neutral-140 dark:hover:text-fluent-neutral-10',
+        )
       }
     >
-      <span className="shrink-0">{icon}</span>
-      <span>{label}</span>
+      {({ isActive }) => (
+        <>
+          <Icon size={17} className="shrink-0" strokeWidth={isActive ? 2 : 1.75} />
+          <AnimatePresence>
+            {!collapsed && (
+              <motion.span
+                initial={{ opacity: 0, x: -4 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -4 }}
+                transition={{ duration: 0.15 }}
+                className="flex-1 whitespace-nowrap"
+              >
+                {label}
+              </motion.span>
+            )}
+          </AnimatePresence>
+          {!collapsed && badge && (
+            <span className="text-[10px] font-bold bg-fluent-accent/10 text-fluent-accent px-1.5 py-0.5 rounded-full">
+              {badge}
+            </span>
+          )}
+        </>
+      )}
     </NavLink>
   )
+
+  if (collapsed) {
+    return <Tooltip content={label} side="right">{content}</Tooltip>
+  }
+  return content
 }

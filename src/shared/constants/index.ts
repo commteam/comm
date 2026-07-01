@@ -57,9 +57,16 @@ export const WINDOW_CONFIG = {
 export const ROUTES = {
   ONBOARDING: '/onboarding',
   DASHBOARD: '/dashboard',
+  SCAN: '/scan',
   ORGANIZE: '/organize',
   TIMELINE: '/timeline',
+  ACTIVITY: '/activity',
+  ANALYTICS: '/analytics',
   RULES: '/rules',
+  FOLDER_PROFILES: '/folder-profiles',
+  DOWNLOADS: '/downloads',
   SETTINGS: '/settings',
   NOTIFICATIONS: '/notifications',
+  HELP: '/help',
+  ABOUT: '/about',
 } as const
