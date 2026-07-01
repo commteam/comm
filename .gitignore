@@ -1,0 +1,28 @@
+node_modules
+dist
+dist-electron
+release
+*.local
+.env
+.env.*
+!.env.example
+*.log
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal

@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --accent: #0078D4;
+    --accent-light: #2899F5;
+    --accent-dark: #005A9E;
+    --radius: 8px;
+    color-scheme: light dark;
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    font-family: "Segoe UI", "Inter", system-ui, sans-serif;
+    font-size: 14px;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #root {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Allow text selection in input areas */
+  input, textarea, [contenteditable] {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  /* Custom scrollbar — Fluent style */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.35);
+  }
+}
+
+@layer components {
+  /* Fluent Design acrylic/glass effect */
+  .acrylic {
+    @apply backdrop-blur-fluent bg-white/70 dark:bg-fluent-neutral-130/70;
+  }
+
+  .acrylic-sm {
+    @apply backdrop-blur-fluent-sm bg-white/80 dark:bg-fluent-neutral-130/80;
+  }
+
+  /* Fluent card */
+  .fluent-card {
+    @apply bg-white dark:bg-fluent-neutral-130 rounded-fluent shadow-fluent-4
+           border border-fluent-neutral-40/50 dark:border-fluent-neutral-120/50;
+  }
+
+  /* Fluent surface */
+  .fluent-surface {
+    @apply bg-fluent-neutral-10 dark:bg-fluent-neutral-140;
+  }
+
+  /* Fluent button base */
+  .fluent-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-fluent
+           font-medium text-sm transition-all duration-150
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-fluent-accent/50
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .fluent-btn-primary {
+    @apply fluent-btn px-4 py-2
+           bg-fluent-accent text-white
+           hover:bg-fluent-accent-dark active:scale-[0.98];
+  }
+
+  .fluent-btn-secondary {
+    @apply fluent-btn px-4 py-2
+           bg-fluent-neutral-30 dark:bg-fluent-neutral-120
+           text-fluent-neutral-130 dark:text-fluent-neutral-20
+           hover:bg-fluent-neutral-40 dark:hover:bg-fluent-neutral-110
+           active:scale-[0.98];
+  }
+
+  .fluent-btn-ghost {
+    @apply fluent-btn px-3 py-2
+           text-fluent-neutral-120 dark:text-fluent-neutral-40
+           hover:bg-fluent-neutral-20 dark:hover:bg-fluent-neutral-130
+           active:scale-[0.98];
+  }
+
+  /* Fluent input */
+  .fluent-input {
+    @apply w-full px-3 py-2 rounded-fluent text-sm
+           bg-white dark:bg-fluent-neutral-130
+           border border-fluent-neutral-50 dark:border-fluent-neutral-110
+           text-fluent-neutral-140 dark:text-fluent-neutral-10
+           placeholder:text-fluent-neutral-80 dark:placeholder:text-fluent-neutral-90
+           focus:outline-none focus:border-fluent-accent
+           transition-colors duration-150;
+  }
+
+  /* Navigation item */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-fluent text-sm font-medium
+           text-fluent-neutral-110 dark:text-fluent-neutral-60
+           hover:bg-fluent-neutral-20 dark:hover:bg-fluent-neutral-130
+           transition-all duration-150 cursor-pointer;
+  }
+
+  .nav-item-active {
+    @apply bg-fluent-accent/10 dark:bg-fluent-accent/20
+           text-fluent-accent dark:text-fluent-accent-light;
+  }
+}
